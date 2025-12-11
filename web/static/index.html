@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KubeTag - Kubernetes Image Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(214.3 31.8% 91.4%)",
+                        background: "hsl(0 0% 100%)",
+                        foreground: "hsl(222.2 84% 4.9%)",
+                        primary: "hsl(221.2 83.2% 53.3%)",
+                        secondary: "hsl(210 40% 96.1%)",
+                        muted: "hsl(210 40% 96.1%)",
+                        accent: "hsl(210 40% 96.1%)",
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .dark {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 224.3 76.3% 48%;
+        }
+
+        .card {
+            background: hsl(var(--card));
+            color: hsl(var(--card-foreground));
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .input {
+            display: flex;
+            width: 100%;
+            border-radius: 0.375rem;
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--background));
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            color: hsl(var(--foreground));
+        }
+
+        .input:focus {
+            outline: 2px solid hsl(var(--ring));
+            outline-offset: 2px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 9999px;
+            padding: 0.25rem 0.625rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .badge-deployment {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+
+        .badge-daemonset {
+            background: hsl(142.1 76.2% 36.3%);
+            color: white;
+        }
+
+        .badge-cronjob {
+            background: hsl(280 65% 60%);
+            color: white;
+        }
+
+        .spinner {
+            border: 3px solid hsl(var(--muted));
+            border-top: 3px solid hsl(var(--primary));
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            text-align: left;
+            padding: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            border-bottom: 1px solid hsl(var(--border));
+        }
+
+        .table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid hsl(var(--border));
+        }
+
+        .table tbody tr:hover {
+            background: hsl(var(--muted));
+        }
+
+        .table tbody tr {
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.2s;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideIn 0.2s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: hsl(var(--muted-foreground));
+            padding: 0;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.25rem;
+        }
+
+        .close-btn:hover {
+            background: hsl(var(--muted));
+            color: hsl(var(--foreground));
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1.5rem;
+            top: 0.5rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background: hsl(var(--primary));
+            border: 2px solid hsl(var(--background));
+        }
+
+        .timeline-item.inactive::before {
+            background: hsl(var(--muted-foreground));
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: -1.188rem;
+            top: 1.25rem;
+            width: 2px;
+            height: calc(100% - 0.75rem);
+            background: hsl(var(--border));
+        }
+
+        .timeline-item:last-child::after {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-[hsl(var(--background))] text-[hsl(var(--foreground))] min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">KubeTag</h1>
+            <p class="text-[hsl(var(--muted-foreground))]">Track Docker images across your Kubernetes cluster</p>
+        </header>
+
+        <!-- Filters -->
+        <div class="card p-6 mb-6">
+            <div class="flex gap-4 items-end">
+                <div class="flex-1">
+                    <label for="namespace" class="block text-sm font-medium mb-2">Namespace</label>
+                    <input 
+                        type="text" 
+                        id="namespace" 
+                        class="input dark:bg-[hsl(var(--input))]" 
+                        placeholder="All namespaces"
+                    >
+                </div>
+                <button onclick="fetchImages()" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="flex justify-center items-center py-12 hidden">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="card p-6 mb-6 border-red-500 bg-red-950/50 hidden">
+            <div class="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-500 mt-0.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-red-500 mb-1">Error</h3>
+                    <p id="error-message" class="text-sm"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div id="stats" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 hidden">
+            <div class="card p-4">
+                <div class="text-sm text-[hsl(var(--muted-foreground))] mb-1">Total Images</div>
+                <div class="text-2xl font-bold" id="total-images">0</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-sm text-[hsl(var(--muted-foreground))] mb-1">Deployments</div>
+                <div class="text-2xl font-bold" id="total-deployments">0</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-sm text-[hsl(var(--muted-foreground))] mb-1">DaemonSets</div>
+                <div class="text-2xl font-bold" id="total-daemonsets">0</div>
+            </div>
+            <div class="card p-4">
+                <div class="text-sm text-[hsl(var(--muted-foreground))] mb-1">CronJobs</div>
+                <div class="text-2xl font-bold" id="total-cronjobs">0</div>
+            </div>
+        </div>
+
+        <!-- Images Table -->
+        <div id="images-container" class="card p-6 hidden">
+            <h2 class="text-xl font-semibold mb-4">Container Images</h2>
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Tag</th>
+                            <th>Type</th>
+                            <th>Resource</th>
+                            <th>Namespace</th>
+                            <th>Containers</th>
+                        </tr>
+                    </thead>
+                    <tbody id="images-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="card p-12 text-center hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mx-auto mb-4 text-[hsl(var(--muted-foreground))]">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+            <h3 class="text-xl font-semibold mb-2">No images found</h3>
+            <p class="text-[hsl(var(--muted-foreground))]">Try refreshing or check your cluster connection</p>
+        </div>
+    </div>
+
+    <!-- Tag History Modal -->
+    <div id="history-modal" class="modal">
+        <div class="modal-content">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-semibold mb-1">Tag History</h2>
+                        <p class="text-sm text-[hsl(var(--muted-foreground))]" id="modal-image-name"></p>
+                    </div>
+                    <button class="close-btn" onclick="closeHistoryModal()" aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Loading state for modal -->
+                <div id="modal-loading" class="flex justify-center items-center py-8 hidden">
+                    <div class="spinner"></div>
+                </div>
+
+                <!-- Error state for modal -->
+                <div id="modal-error" class="p-4 border border-red-500 bg-red-950/50 rounded-md mb-4 hidden">
+                    <p class="text-sm text-red-500" id="modal-error-message"></p>
+                </div>
+
+                <!-- Tag history timeline -->
+                <div id="history-timeline" class="timeline">
+                    <!-- Timeline items will be inserted here -->
+                </div>
+
+                <!-- Empty state for modal -->
+                <div id="modal-empty" class="text-center py-8 hidden">
+                    <p class="text-[hsl(var(--muted-foreground))]">No tag history found for this image</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API base URL
+        const API_BASE = '/api';
+
+        // Fetch images from the API
+        async function fetchImages() {
+            const namespace = document.getElementById('namespace').value.trim();
+            
+            // Show loading state
+            showLoading(true);
+            hideError();
+            hideContent();
+
+            try {
+                const url = namespace 
+                    ? `${API_BASE}/images?namespace=${encodeURIComponent(namespace)}`
+                    : `${API_BASE}/images`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                showLoading(false);
+                
+                if (data.images && data.images.length > 0) {
+                    displayImages(data.images);
+                    updateStats(data.images);
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                showLoading(false);
+                showError(error.message);
+            }
+        }
+
+        // Display images in the table
+        function displayImages(images) {
+            const tbody = document.getElementById('images-tbody');
+            tbody.innerHTML = '';
+
+            images.forEach(img => {
+                const row = document.createElement('tr');
+                
+                const badgeClass = `badge badge-${img.resourceType.toLowerCase()}`;
+                
+                row.innerHTML = `
+                    <td class="font-mono text-sm">${escapeHtml(img.name)}</td>
+                    <td><span class="badge" style="background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground));">${escapeHtml(img.tag)}</span></td>
+                    <td><span class="${badgeClass}">${escapeHtml(img.resourceType)}</span></td>
+                    <td class="font-medium">${escapeHtml(img.resourceName)}</td>
+                    <td class="text-[hsl(var(--muted-foreground))]">${escapeHtml(img.namespace)}</td>
+                    <td class="text-sm">${escapeHtml(img.containers.join(', '))}</td>
+                `;
+                
+                // Add click handler to show history
+                row.addEventListener('click', () => showHistory(img.name));
+                row.style.cursor = 'pointer';
+                
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('images-container').classList.remove('hidden');
+        }
+
+        // Update statistics
+        function updateStats(images) {
+            const stats = {
+                deployments: 0,
+                daemonsets: 0,
+                cronjobs: 0
+            };
+
+            images.forEach(img => {
+                const type = img.resourceType.toLowerCase();
+                if (type === 'deployment') stats.deployments++;
+                else if (type === 'daemonset') stats.daemonsets++;
+                else if (type === 'cronjob') stats.cronjobs++;
+            });
+
+            document.getElementById('total-images').textContent = images.length;
+            document.getElementById('total-deployments').textContent = stats.deployments;
+            document.getElementById('total-daemonsets').textContent = stats.daemonsets;
+            document.getElementById('total-cronjobs').textContent = stats.cronjobs;
+            document.getElementById('stats').classList.remove('hidden');
+        }
+
+        // Show/hide loading state
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error').classList.remove('hidden');
+        }
+
+        // Hide error message
+        function hideError() {
+            document.getElementById('error').classList.add('hidden');
+        }
+
+        // Hide all content
+        function hideContent() {
+            document.getElementById('images-container').classList.add('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
+        }
+
+        // Show empty state
+        function showEmptyState() {
+            document.getElementById('empty-state').classList.remove('hidden');
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Show tag history modal
+        async function showHistory(imageName) {
+            const modal = document.getElementById('history-modal');
+            const modalImageName = document.getElementById('modal-image-name');
+            const timeline = document.getElementById('history-timeline');
+            const loading = document.getElementById('modal-loading');
+            const error = document.getElementById('modal-error');
+            const empty = document.getElementById('modal-empty');
+
+            // Show modal
+            modal.classList.add('show');
+            modalImageName.textContent = imageName;
+
+            // Reset states
+            timeline.innerHTML = '';
+            loading.classList.remove('hidden');
+            error.classList.add('hidden');
+            empty.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/images/${encodeURIComponent(imageName)}/history`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                loading.classList.add('hidden');
+
+                if (data.tags && data.tags.length > 0) {
+                    displayHistory(data.tags);
+                } else {
+                    empty.classList.remove('hidden');
+                }
+            } catch (err) {
+                loading.classList.add('hidden');
+                error.classList.remove('hidden');
+                document.getElementById('modal-error-message').textContent = err.message;
+            }
+        }
+
+        // Display tag history in timeline
+        function displayHistory(tags) {
+            const timeline = document.getElementById('history-timeline');
+            
+            // Sort by first_seen descending (newest first)
+            tags.sort((a, b) => new Date(b.first_seen) - new Date(a.first_seen));
+
+            tags.forEach(tag => {
+                const item = document.createElement('div');
+                item.className = `timeline-item ${tag.deleted_at ? 'inactive' : ''}`;
+                
+                const firstSeen = new Date(tag.first_seen).toLocaleString();
+                const lastSeen = tag.last_seen ? new Date(tag.last_seen).toLocaleString() : 'Active';
+                const status = tag.deleted_at ? 'Deleted' : 'Active';
+                const statusColor = tag.deleted_at ? 'text-red-500' : 'text-green-500';
+                
+                item.innerHTML = `
+                    <div class="card p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-mono text-lg font-semibold">${escapeHtml(tag.tag)}</span>
+                            <span class="badge ${statusColor} text-xs">${status}</span>
+                        </div>
+                        <div class="text-sm text-[hsl(var(--muted-foreground))] space-y-1">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span>First seen: ${firstSeen}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span>Last seen: ${lastSeen}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                timeline.appendChild(item);
+            });
+        }
+
+        // Close tag history modal
+        function closeHistoryModal() {
+            const modal = document.getElementById('history-modal');
+            modal.classList.remove('show');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('history-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'history-modal') {
+                closeHistoryModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeHistoryModal();
+            }
+        });
+
+        // Allow Enter key to trigger search
+        document.getElementById('namespace').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                fetchImages();
+            }
+        });
+
+        // Load images on page load
+        window.addEventListener('DOMContentLoaded', fetchImages);
+    </script>
+</body>
+</html>
