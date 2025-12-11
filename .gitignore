@@ -1,5 +1,6 @@
 # Binaries
 ./kubetag
+./bin/kubetag
 *.exe
 *.exe~
 *.dll
