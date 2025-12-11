@@ -43,6 +43,8 @@ spec:
           env:
             - name: PORT
               value: {{ .Values.env.PORT | quote }}
+            - name: WATCH_NAMESPACES
+              value: {{ .Values.watch_namespaces | quote }}
             - name: DB_HOST
               value: {{ include "kubetag.databaseHost" . | quote }}
             - name: DB_PORT

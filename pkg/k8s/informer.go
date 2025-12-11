@@ -46,18 +46,37 @@ type InformerManager struct {
 	factory      informers.SharedInformerFactory
 	stopCh       chan struct{}
 	eventHandler ImageEventHandler
+	namespaces   []string // List of namespaces to watch, empty means all
 }
 
 // NewInformerManager creates a new informer manager
-func NewInformerManager(clientset *kubernetes.Clientset, eventHandler ImageEventHandler) *InformerManager {
-	// Create a shared informer factory with default resync period
-	factory := informers.NewSharedInformerFactory(clientset, 30*time.Second)
+// namespaces: list of namespaces to watch. Pass ["*"] or empty slice to watch all namespaces
+func NewInformerManager(clientset *kubernetes.Clientset, eventHandler ImageEventHandler, namespaces []string) *InformerManager {
+	// If namespaces contains "*" or is empty, watch all namespaces
+	if len(namespaces) == 0 || (len(namespaces) == 1 && namespaces[0] == "*") {
+		namespaces = []string{} // Empty means all namespaces
+	}
+
+	var factory informers.SharedInformerFactory
+
+	// If watching all namespaces, create factory without namespace filter
+	if len(namespaces) == 0 {
+		factory = informers.NewSharedInformerFactory(clientset, 30*time.Second)
+	} else if len(namespaces) == 1 {
+		// If watching a single namespace, use namespace-specific factory
+		factory = informers.NewSharedInformerFactoryWithOptions(clientset, 30*time.Second,
+			informers.WithNamespace(namespaces[0]))
+	} else {
+		// For multiple namespaces, we'll still use all namespaces factory but filter in event handlers
+		factory = informers.NewSharedInformerFactory(clientset, 30*time.Second)
+	}
 
 	return &InformerManager{
 		clientset:    clientset,
 		factory:      factory,
 		stopCh:       make(chan struct{}),
 		eventHandler: eventHandler,
+		namespaces:   namespaces,
 	}
 }
 
@@ -187,8 +206,30 @@ func (im *InformerManager) setupCronJobInformer() error {
 	return err
 }
 
+// shouldWatchNamespace checks if a namespace should be watched based on the filter
+func (im *InformerManager) shouldWatchNamespace(namespace string) bool {
+	// If namespaces list is empty, watch all namespaces
+	if len(im.namespaces) == 0 {
+		return true
+	}
+
+	// Check if namespace is in the watch list
+	for _, ns := range im.namespaces {
+		if ns == namespace {
+			return true
+		}
+	}
+
+	return false
+}
+
 // handlePodSpecChange processes pod spec changes and extracts image information
 func (im *InformerManager) handlePodSpecChange(eventType ImageEventType, resourceType, resourceName, namespace string, spec corev1.PodSpec) {
+	// Filter by namespace if configured
+	if !im.shouldWatchNamespace(namespace) {
+		return
+	}
+
 	allContainers := append(spec.Containers, spec.InitContainers...)
 
 	for _, container := range allContainers {

@@ -280,12 +280,12 @@
         <div class="card p-6 mb-6">
             <div class="flex gap-4 items-end">
                 <div class="flex-1">
-                    <label for="namespace" class="block text-sm font-medium mb-2">Namespace</label>
+                    <label for="application-filter" class="block text-sm font-medium mb-2">Application</label>
                     <input 
                         type="text" 
-                        id="namespace" 
+                        id="application-filter" 
                         class="input dark:bg-[hsl(var(--input))]" 
-                        placeholder="All namespaces"
+                        placeholder="Filter by application name..."
                     >
                 </div>
                 <button onclick="fetchImages()" class="btn btn-primary">
@@ -414,21 +414,18 @@
         // API base URL
         const API_BASE = '/api';
 
+        // Store all images for filtering
+        let allImages = [];
+
         // Fetch images from the API
         async function fetchImages() {
-            const namespace = document.getElementById('namespace').value.trim();
-            
             // Show loading state
             showLoading(true);
             hideError();
             hideContent();
 
             try {
-                const url = namespace 
-                    ? `${API_BASE}/images?namespace=${encodeURIComponent(namespace)}`
-                    : `${API_BASE}/images`;
-                
-                const response = await fetch(url);
+                const response = await fetch(`${API_BASE}/images`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -439,14 +436,43 @@
                 showLoading(false);
                 
                 if (data.images && data.images.length > 0) {
-                    displayImages(data.images);
-                    updateStats(data.images);
+                    allImages = data.images;
+                    filterAndDisplayImages();
                 } else {
+                    allImages = [];
                     showEmptyState();
                 }
             } catch (error) {
                 showLoading(false);
                 showError(error.message);
+            }
+        }
+
+        // Filter and display images based on search input
+        function filterAndDisplayImages() {
+            const filterText = document.getElementById('application-filter').value.trim().toLowerCase();
+            
+            if (!allImages || allImages.length === 0) {
+                showEmptyState();
+                return;
+            }
+
+            let filteredImages = allImages;
+            
+            // Apply filter if search text is provided
+            if (filterText) {
+                filteredImages = allImages.filter(img => {
+                    return img.resourceName.toLowerCase().includes(filterText) ||
+                           img.name.toLowerCase().includes(filterText);
+                });
+            }
+
+            if (filteredImages.length > 0) {
+                displayImages(filteredImages);
+                updateStats(filteredImages);
+            } else {
+                hideContent();
+                showEmptyState();
             }
         }
 
@@ -642,8 +668,13 @@
             }
         });
 
-        // Allow Enter key to trigger search
-        document.getElementById('namespace').addEventListener('keypress', (e) => {
+        // Real-time filtering on input
+        document.getElementById('application-filter').addEventListener('input', () => {
+            filterAndDisplayImages();
+        });
+
+        // Allow Enter key to trigger refresh
+        document.getElementById('application-filter').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 fetchImages();
             }

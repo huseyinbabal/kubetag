@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,6 +45,28 @@ func main() {
 	// Initialize repository
 	imageRepo := repository.NewImageRepository(db)
 
+	// Get namespace filter configuration from environment
+	// Supports: "*" for all namespaces (default), or comma-separated list like "default,kube-system"
+	namespacesConfig := os.Getenv("WATCH_NAMESPACES")
+	if namespacesConfig == "" {
+		namespacesConfig = "*" // Default to all namespaces
+	}
+
+	var namespaces []string
+	if namespacesConfig == "*" {
+		namespaces = []string{"*"}
+		log.Println("Watching all namespaces")
+	} else {
+		// Split by comma and trim whitespace
+		for _, ns := range strings.Split(namespacesConfig, ",") {
+			trimmed := strings.TrimSpace(ns)
+			if trimmed != "" {
+				namespaces = append(namespaces, trimmed)
+			}
+		}
+		log.Printf("Watching namespaces: %v", namespaces)
+	}
+
 	// Initialize service layer
 	var imageService *service.ImageService
 
@@ -52,7 +75,7 @@ func main() {
 		if imageService != nil {
 			imageService.HandleImageEvent(event)
 		}
-	})
+	}, namespaces)
 
 	// Create service with repository and informer
 	imageService = service.NewImageService(imageRepo, informerManager)

@@ -124,3 +124,9 @@ externalDatabase:
 # Environment variables
 env:
   PORT: "8080"
+
+# Kubernetes namespace filtering configuration
+# watch_namespaces defines which namespaces to monitor for container images
+# Use "*" to watch all namespaces (default)
+# Or provide a comma-separated list like "default,kube-system,production"
+watch_namespaces: "*"
