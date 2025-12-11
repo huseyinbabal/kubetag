@@ -30,25 +30,20 @@ type ImageTag struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// Foreign key
-	ImageID uint  `gorm:"index;not null" json:"image_id"`
+	ImageID uint  `gorm:"uniqueIndex:idx_image_tag_resource;not null" json:"image_id"`
 	Image   Image `gorm:"constraint:OnDelete:CASCADE;" json:"image,omitempty"`
 
 	// Tag information
-	Tag           string    `gorm:"index;not null" json:"tag"`           // e.g., latest, v1.2.3
-	FirstSeen     time.Time `gorm:"not null" json:"first_seen"`          // When first detected
-	LastSeen      time.Time `gorm:"not null" json:"last_seen"`           // When last detected
-	ResourceType  string    `gorm:"index;not null" json:"resource_type"` // Deployment, DaemonSet, CronJob
-	ResourceName  string    `gorm:"index;not null" json:"resource_name"` // Name of the resource
-	Namespace     string    `gorm:"index;not null" json:"namespace"`     // Kubernetes namespace
-	ContainerName string    `gorm:"not null" json:"container_name"`      // Container name within the pod
+	Tag           string    `gorm:"uniqueIndex:idx_image_tag_resource;not null" json:"tag"`            // e.g., latest, v1.2.3
+	FirstSeen     time.Time `gorm:"not null" json:"first_seen"`                                        // When first detected
+	LastSeen      time.Time `gorm:"not null" json:"last_seen"`                                         // When last detected
+	ResourceType  string    `gorm:"uniqueIndex:idx_image_tag_resource;not null" json:"resource_type"`  // Deployment, DaemonSet, CronJob
+	ResourceName  string    `gorm:"uniqueIndex:idx_image_tag_resource;not null" json:"resource_name"`  // Name of the resource
+	Namespace     string    `gorm:"uniqueIndex:idx_image_tag_resource;not null" json:"namespace"`      // Kubernetes namespace
+	ContainerName string    `gorm:"uniqueIndex:idx_image_tag_resource;not null" json:"container_name"` // Container name within the pod
 
-	// Composite unique index to prevent duplicates
-	// Same image tag can exist multiple times if used in different resources/containers
-}
-
-// TableName overrides the table name
-func (Image) TableName() string {
-	return "images"
+	// Composite unique index idx_image_tag_resource prevents duplicates
+	// Fields: image_id, tag, resource_type, resource_name, namespace, container_name
 }
 
 // TableName overrides the table name

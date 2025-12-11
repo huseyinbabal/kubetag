@@ -70,6 +70,9 @@ func Connect(config *Config) (*gorm.DB, error) {
 func Migrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
+	// Drop old index if it exists before running AutoMigrate
+	db.Exec("DROP INDEX IF EXISTS idx_image_tag_unique")
+
 	err := db.AutoMigrate(
 		&models.Image{},
 		&models.ImageTag{},
@@ -79,14 +82,8 @@ func Migrate(db *gorm.DB) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Create composite unique index for ImageTag to prevent exact duplicates
-	if err := db.Exec(`
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_image_tag_unique 
-		ON image_tags(image_id, tag, resource_type, resource_name, namespace, container_name) 
-		WHERE deleted_at IS NULL
-	`).Error; err != nil {
-		return fmt.Errorf("failed to create unique index: %w", err)
-	}
+	// GORM will automatically create the idx_image_tag_resource unique index
+	// based on the struct tags in models.ImageTag
 
 	log.Println("Database migrations completed successfully")
 	return nil
