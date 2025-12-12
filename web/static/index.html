@@ -612,12 +612,12 @@
 
             tags.forEach(tag => {
                 const item = document.createElement('div');
-                item.className = `timeline-item ${tag.deleted_at ? 'inactive' : ''}`;
+                item.className = `timeline-item ${!tag.active ? 'inactive' : ''}`;
                 
                 const firstSeen = new Date(tag.first_seen).toLocaleString();
-                const lastSeen = tag.last_seen ? new Date(tag.last_seen).toLocaleString() : 'Active';
-                const status = tag.deleted_at ? 'Deleted' : 'Active';
-                const statusColor = tag.deleted_at ? 'text-red-500' : 'text-green-500';
+                const lastSeen = new Date(tag.last_seen).toLocaleString();
+                const status = tag.active ? 'Active' : 'Inactive';
+                const statusColor = tag.active ? 'text-green-500' : 'text-red-500';
                 
                 item.innerHTML = `
                     <div class="card p-4">
@@ -639,6 +639,20 @@
                                     <polyline points="12 6 12 12 16 14"/>
                                 </svg>
                                 <span>Last seen: ${lastSeen}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="9" y1="3" x2="9" y2="21"/>
+                                </svg>
+                                <span>Resource: ${escapeHtml(tag.resource_type)}/${escapeHtml(tag.resource_name)}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                <span>Namespace: ${escapeHtml(tag.namespace)}</span>
                             </div>
                         </div>
                     </div>

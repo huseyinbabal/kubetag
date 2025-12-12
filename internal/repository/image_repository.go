@@ -81,7 +81,7 @@ func (r *ImageRepository) DeleteImageTag(
 	).Delete(&models.ImageTag{}).Error
 }
 
-// GetAllImages returns all active images grouped by image name
+// GetAllImages returns all active images grouped by image name, showing only the latest tag per resource
 func (r *ImageRepository) GetAllImages(namespace string) ([]models.ImageInfo, error) {
 	var imageTags []models.ImageTag
 
@@ -95,10 +95,29 @@ func (r *ImageRepository) GetAllImages(namespace string) ([]models.ImageInfo, er
 		return nil, fmt.Errorf("failed to fetch image tags: %w", err)
 	}
 
-	// Group by image+tag+resource to aggregate container names
+	// Group by image name+resource to find the latest tag
+	// Key: image_name|resource_type|resource_name|namespace
+	latestTagMap := make(map[string]*models.ImageTag)
+
+	for i := range imageTags {
+		it := &imageTags[i]
+		resourceKey := fmt.Sprintf("%s|%s|%s|%s",
+			it.Image.Name, it.ResourceType, it.ResourceName, it.Namespace)
+
+		if existing, found := latestTagMap[resourceKey]; found {
+			// Keep the tag with the most recent LastSeen
+			if it.LastSeen.After(existing.LastSeen) {
+				latestTagMap[resourceKey] = it
+			}
+		} else {
+			latestTagMap[resourceKey] = it
+		}
+	}
+
+	// Now aggregate containers for each unique image+tag+resource combination
 	imageMap := make(map[string]*models.ImageInfo)
 
-	for _, it := range imageTags {
+	for _, it := range latestTagMap {
 		key := fmt.Sprintf("%s|%s|%s|%s|%s",
 			it.Image.Name, it.Tag, it.ResourceType, it.ResourceName, it.Namespace)
 
@@ -137,7 +156,7 @@ func (r *ImageRepository) GetImageTagHistory(imageName, namespace string) (*mode
 	}
 
 	var imageTags []models.ImageTag
-	query := r.db.Where("image_id = ?", image.ID)
+	query := r.db.Unscoped().Where("image_id = ?", image.ID)
 
 	if namespace != "" {
 		query = query.Where("namespace = ?", namespace)
@@ -145,6 +164,15 @@ func (r *ImageRepository) GetImageTagHistory(imageName, namespace string) (*mode
 
 	if err := query.Order("first_seen DESC").Find(&imageTags).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch image tag history: %w", err)
+	}
+
+	// Group by tag to find which tags are currently active
+	// A tag is active if it has at least one non-deleted record
+	tagActiveMap := make(map[string]bool)
+	for _, it := range imageTags {
+		if it.DeletedAt.Time.IsZero() {
+			tagActiveMap[it.Tag] = true
+		}
 	}
 
 	// Convert to response format
@@ -158,7 +186,7 @@ func (r *ImageRepository) GetImageTagHistory(imageName, namespace string) (*mode
 			ResourceName: it.ResourceName,
 			Namespace:    it.Namespace,
 			Container:    it.ContainerName,
-			Active:       it.DeletedAt.Time.IsZero(), // Active if not soft-deleted
+			Active:       tagActiveMap[it.Tag], // Active if any instance of this tag is not deleted
 		})
 	}
 

@@ -88,6 +88,7 @@ func main() {
 
 	// Initialize handlers
 	imageHandler := handler.NewImageHandler(imageService)
+	metricsHandler := handler.NewMetricsHandler(imageService)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -107,6 +108,9 @@ func main() {
 
 	// Serve static files
 	app.Static("/", "./web/static")
+
+	// Prometheus metrics endpoint
+	app.Get("/metrics", metricsHandler.GetMetrics)
 
 	// API routes
 	api := app.Group("/api")
