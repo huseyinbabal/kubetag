@@ -1,3 +1,4 @@
+![Kubetag](https://github.com/user-attachments/assets/e4c68c7c-affa-4bee-9f10-77430b8c8fb4)
 # KubeTag
 
 Track Docker images across your Kubernetes cluster with a simple web interface.
