@@ -46,7 +46,8 @@ docker run -p 8080:8080 -v ~/.kube/config:/root/.kube/config kubetag
 ### Deploy to Kubernetes
 
 ```bash
-kubectl apply -f k8s/
+helm repo add kubetag https://huseyinbabal.github.io/huseyinbabal/charts
+helm install kubetag huseyinbabal/kubetag --namespace kubetag --create-namespace
 ```
 
 ## API
@@ -56,9 +57,11 @@ kubectl apply -f k8s/
 Fetch all container images from the cluster.
 
 **Query Parameters:**
+
 - `namespace` (optional) - Filter by namespace
 
 **Response:**
+
 ```json
 {
   "images": [
@@ -80,6 +83,7 @@ Fetch all container images from the cluster.
 Get the version history for a specific image.
 
 **Response:**
+
 ```json
 {
   "image_name": "nginx",
@@ -106,10 +110,8 @@ KubeTag exposes Prometheus metrics at `/metrics` endpoint.
 
 - `kubetag_image_info` - Information about container images running in the cluster
   - Labels: `image_name`, `tag`, `repository`, `resource_type`, `resource_name`, `namespace`, `container`
-  
 - `kubetag_image_tag_info` - Detailed information about image tags
   - Labels: `image_name`, `tag`, `resource_type`, `resource_name`, `namespace`
-  
 - `kubetag_image_version_count` - Count of different versions per image
   - Labels: `image_name`, `namespace`
 
@@ -119,10 +121,10 @@ Add the following to your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
-  - job_name: 'kubetag'
+  - job_name: "kubetag"
     static_configs:
-      - targets: ['kubetag:8080']
-    metrics_path: '/metrics'
+      - targets: ["kubetag:8080"]
+    metrics_path: "/metrics"
 ```
 
 For Kubernetes ServiceMonitor (if using Prometheus Operator):
@@ -138,16 +140,17 @@ spec:
     matchLabels:
       app: kubetag
   endpoints:
-  - port: http
-    path: /metrics
-    interval: 30s
+    - port: http
+      path: /metrics
+      interval: 30s
 ```
 
 ## Configuration
 
 Environment variables:
+
 - `PORT` - Server port (default: 8080)
-- `WATCH_NAMESPACES` - Namespaces to watch, comma-separated or "*" for all (default: "*")
+- `WATCH_NAMESPACES` - Namespaces to watch, comma-separated or "_" for all (default: "_")
 
 ## License
 
