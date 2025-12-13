@@ -9,6 +9,14 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// ImageRepositoryInterface defines the methods for image repository operations
+type ImageRepositoryInterface interface {
+	UpsertImageTag(imageName, repository, tag, resourceType, resourceName, namespace, containerName string) error
+	DeleteImageTag(resourceType, resourceName, namespace string) error
+	GetAllImages(namespace string) ([]models.ImageInfo, error)
+	GetImageTagHistory(imageName, namespace string) (*models.ImageTagHistory, error)
+}
+
 // ImageRepository handles database operations for images
 type ImageRepository struct {
 	db *gorm.DB

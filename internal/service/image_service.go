@@ -5,19 +5,26 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/huseyinbabal/kubetag/internal/k8s"
 	"github.com/huseyinbabal/kubetag/internal/models"
 	"github.com/huseyinbabal/kubetag/internal/repository"
-	"github.com/huseyinbabal/kubetag/pkg/k8s"
 )
+
+// ImageServiceInterface defines the methods for image service operations
+type ImageServiceInterface interface {
+	GetImages(ctx context.Context, namespace string) (*models.ImagesResponse, error)
+	GetImageTagHistory(ctx context.Context, imageName, namespace string) (*models.ImageTagHistory, error)
+	HandleImageEvent(event k8s.ImageEvent)
+}
 
 // ImageService handles business logic for image operations
 type ImageService struct {
-	repo            *repository.ImageRepository
+	repo            repository.ImageRepositoryInterface
 	informerManager *k8s.InformerManager
 }
 
 // NewImageService creates a new image service
-func NewImageService(repo *repository.ImageRepository, informerManager *k8s.InformerManager) *ImageService {
+func NewImageService(repo repository.ImageRepositoryInterface, informerManager *k8s.InformerManager) *ImageService {
 	return &ImageService{
 		repo:            repo,
 		informerManager: informerManager,

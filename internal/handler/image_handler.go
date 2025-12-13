@@ -7,11 +7,11 @@ import (
 
 // ImageHandler handles HTTP requests for images
 type ImageHandler struct {
-	service *service.ImageService
+	service service.ImageServiceInterface
 }
 
 // NewImageHandler creates a new image handler
-func NewImageHandler(service *service.ImageService) *ImageHandler {
+func NewImageHandler(service service.ImageServiceInterface) *ImageHandler {
 	return &ImageHandler{
 		service: service,
 	}

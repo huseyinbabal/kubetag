@@ -1,4 +1,4 @@
-.PHONY: build run test docker-build docker-run clean deploy
+.PHONY: build run test docker-build docker-run clean deploy mocks
 
 # Build the application
 build:
@@ -11,6 +11,24 @@ run:
 # Run tests
 test:
 	go test -v ./...
+
+# Run tests in short mode (skips Docker-dependent tests)
+test-short:
+	go test -v -short ./...
+
+# Run tests with coverage (excluding generated mocks)
+test-coverage:
+	go test -v -coverprofile=coverage.out $$(go list ./... | grep -v '/mocks')
+	go tool cover -html=coverage.out -o coverage.html
+
+# Run only tests that don't require Docker
+test-no-docker:
+	go test -v ./internal/handler ./internal/service ./internal/k8s ./internal/database
+
+# Generate mocks using mockery
+mocks:
+	@which mockery > /dev/null || (echo "Installing mockery..." && go install github.com/vektra/mockery/v2@latest)
+	mockery
 
 # Build Docker image
 docker-build:
@@ -31,6 +49,7 @@ undeploy:
 # Clean build artifacts
 clean:
 	rm -f kubetag
+	rm -f coverage.out coverage.html
 
 # Install dependencies
 deps:

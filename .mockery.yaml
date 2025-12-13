@@ -1,0 +1,17 @@
+with-expecter: true
+testonly: false
+dir: "internal/mocks"
+outpkg: mocks
+packages:
+  github.com/huseyinbabal/kubetag/internal/service:
+    interfaces:
+      ImageServiceInterface:
+        config:
+          filename: mock_image_service.go
+          mockname: MockImageService
+  github.com/huseyinbabal/kubetag/internal/repository:
+    interfaces:
+      ImageRepositoryInterface:
+        config:
+          filename: mock_image_repository.go
+          mockname: MockImageRepository

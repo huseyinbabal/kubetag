@@ -42,7 +42,7 @@ type ImageEventHandler func(event ImageEvent)
 
 // InformerManager manages Kubernetes informers for watching resources
 type InformerManager struct {
-	clientset    *kubernetes.Clientset
+	clientset    kubernetes.Interface
 	factory      informers.SharedInformerFactory
 	stopCh       chan struct{}
 	eventHandler ImageEventHandler
@@ -51,7 +51,7 @@ type InformerManager struct {
 
 // NewInformerManager creates a new informer manager
 // namespaces: list of namespaces to watch. Pass ["*"] or empty slice to watch all namespaces
-func NewInformerManager(clientset *kubernetes.Clientset, eventHandler ImageEventHandler, namespaces []string) *InformerManager {
+func NewInformerManager(clientset kubernetes.Interface, eventHandler ImageEventHandler, namespaces []string) *InformerManager {
 	// If namespaces contains "*" or is empty, watch all namespaces
 	if len(namespaces) == 0 || (len(namespaces) == 1 && namespaces[0] == "*") {
 		namespaces = []string{} // Empty means all namespaces

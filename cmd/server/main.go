@@ -12,11 +12,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/huseyinbabal/kubetag/internal/database"
 	"github.com/huseyinbabal/kubetag/internal/handler"
+	"github.com/huseyinbabal/kubetag/internal/k8s"
 	"github.com/huseyinbabal/kubetag/internal/repository"
 	"github.com/huseyinbabal/kubetag/internal/service"
-	"github.com/huseyinbabal/kubetag/pkg/database"
-	"github.com/huseyinbabal/kubetag/pkg/k8s"
 )
 
 func main() {

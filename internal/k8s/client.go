@@ -17,11 +17,11 @@ import (
 
 // Client wraps the Kubernetes clientset
 type Client struct {
-	clientset *kubernetes.Clientset
+	clientset kubernetes.Interface
 }
 
 // GetClientset returns the underlying Kubernetes clientset
-func (c *Client) GetClientset() *kubernetes.Clientset {
+func (c *Client) GetClientset() kubernetes.Interface {
 	return c.clientset
 }
 
